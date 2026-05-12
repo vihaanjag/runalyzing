@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Running Shoe Finder</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;color:#111;min-height:100vh}
+.app{max-width:440px;margin:0 auto;min-height:100vh;background:#fff;display:flex;flex-direction:column}
+.header{background:#111;color:#fff;padding:20px 20px 16px;flex-shrink:0}
+.header-label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.6;margin-bottom:4px}
+.header-title{font-size:20px;font-weight:600;margin-bottom:12px}
+.progress-track{height:3px;background:rgba(255,255,255,.2);border-radius:2px}
+.progress-fill{height:100%;background:#fff;border-radius:2px;transition:width .3s}
+.progress-text{font-size:11px;opacity:.5;margin-top:5px}
+.body{padding:24px 20px;flex:1}
+.step-label{font-size:17px;font-weight:600;margin-bottom:4px}
+.step-hint{font-size:12px;color:#888;margin-bottom:6px}
+.multiselect-hint{font-size:11px;color:#aaa;margin-bottom:16px;font-style:italic}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{padding:12px 14px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;font-size:14px;cursor:pointer;text-align:left;transition:all .12s;display:flex;align-items:center;gap:10px;color:#222}
+.opt:hover{border-color:#bbb;background:#fafafa}
+.opt.sel{border:1.5px solid #111;background:#111;color:#fff}
+.opt .check{width:18px;height:18px;border-radius:50%;border:1.5px solid currentColor;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px}
+.opt.sel .check{background:#fff;border-color:#fff;color:#111}
+.slider-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.slider-label{font-size:13px;color:#666}
+.slider-val{font-size:18px;font-weight:600}
+input[type=range]{width:100%;margin-bottom:8px;accent-color:#111}
+.slider-ticks{display:flex;justify-content:space-between;font-size:10px;color:#bbb;margin-bottom:20px}
+.btn-primary{width:100%;padding:14px;background:#111;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-top:20px}
+.btn-primary:hover{background:#333}
+.btn-back{background:none;border:none;cursor:pointer;font-size:12px;color:#aaa;margin-top:16px;padding:0;display:block}
+.results-header{background:#111;color:#fff;padding:20px 20px 16px}
+.results-body{padding:16px}
+.card{border:1px solid #e0e0e0;border-radius:12px;margin-bottom:12px;overflow:hidden}
+.card.top{border:2px solid #111}
+.card-top-badge{background:#f0f0f0;padding:4px 12px;font-size:10px;font-weight:600;color:#555;letter-spacing:.06em;border-bottom:1px solid #e0e0e0}
+.card-body{padding:14px}
+.card-row1{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
+.brand-name{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;margin-bottom:2px}
+.shoe-name{font-size:15px;font-weight:600}
+.price-block{text-align:right}
+.price{font-size:15px;font-weight:600}
+.match{font-size:10px;color:#999;margin-top:1px}
+.best-for{font-size:12px;color:#666;line-height:1.5;margin-bottom:10px}
+.pills{margin-bottom:10px;display:flex;flex-wrap:wrap;gap:4px}
+.pill{display:inline-block;font-size:10px;padding:3px 8px;border-radius:10px;border:1px solid #e0e0e0;color:#555}
+.expand-btn{background:none;border:none;cursor:pointer;font-size:11px;color:#888;padding:0}
+.specs{margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0}
+.spec-row{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #f8f8f8}
+.spec-key{color:#aaa}
+.spec-val{color:#222;font-weight:500;text-align:right;max-width:62%}
+.restart-btn{width:100%;padding:13px;background:#111;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;margin-top:4px}
+.disclaimer{font-size:10px;color:#bbb;text-align:center;margin-top:12px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script>
+const CAD = 1.37;
+const USD = p => `$${p} USD / ~$${Math.round(p * CAD)} CAD`;
+
+const DB = [
+  // ASICS — specs verified via Doctors of Running & RunRepeat
+  {id:1,brand:"ASICS",model:"Novablast 5",purpose:["daily","performance"],drop:8,stack:"40.9/33.5mm",wt:"255g (M9)",foam:"FF Blast Max",feel:"Soft & bouncy",plate:"None",cushion:"Maximum",support:"Neutral",fit:"True to size; D & 2E widths",priceUSD:140,gait:["neutral"],foamT:["soft","snappy"],dist:["5k","10k","half","full"],exp:["intermediate","advanced"],widths:["narrow","normal","wide"],arch:["high","medium","low"],best:"Long runs, easy days, versatile daily training with fun bounce. DOR: performance trainer. RunRepeat: 17% softer than avg, excellent durability."},
+  {id:2,brand:"ASICS",model:"Superblast 3",purpose:["daily","performance","race"],drop:8,stack:"46.5/38.5mm",wt:"239g (M9)",foam:"FF Leap + FF Blast+",feel:"Very soft & bouncy",plate:"None (plateless)",cushion:"Maximum",support:"Neutral",fit:"True to size; slightly roomy toe box",priceUSD:210,gait:["neutral"],foamT:["soft","springy"],dist:["half","full"],exp:["intermediate","advanced"],widths:["normal","wide"],arch:["high","medium"],best:"Versatile super trainer from easy to marathon pace. DOR: soft & bouncy super trainer. RunRepeat: 15% bouncier vs v2, tallest plateless super trainer."},
+  {id:3,brand:"ASICS",model:"Gel Nimbus 28",purpose:["daily","recovery"],drop:8,stack:"43.5/35.5mm",wt:"280g (M9)",foam:"FF Blast Plus + PureGel",feel:"Firm & controlled",plate:"None",cushion:"Maximum",support:"Neutral",fit:"True to size; slightly narrow toe box",priceUSD:170,gait:["neutral","mild-over"],foamT:["firm"],dist:["half","full"],exp:["beginner","intermediate","advanced"],widths:["normal","wide"],arch:["high","medium","low"],best:"Premium cushion for recovery, high mileage, easy long runs. DOR: firmer than expected, lighter than ever. RunRepeat: 137/133 SA shock absorption, outstanding grip."},
+  {id:4,brand:"ASICS",model:"Gel Cumulus 28",purpose:["daily"],drop:8,stack:"42.8/29.5mm",wt:"259g (M9)",foam:"FF Blast Max + PureGel",feel:"Soft & springy",plate:"None",cushion:"High",support:"Neutral",fit:"True to size; slightly roomy forefoot",priceUSD:140,gait:["neutral","heel"],foamT:["soft","snappy"],dist:["5k","10k","half","full"],exp:["beginner","intermediate","advanced"],widths:["normal","wide"],arch:["high","medium","low"],best:"Versatile everyday trainer for daily miles. RunRepeat: plush, wide platform, best for heel strikers. DOR: softest Cumulus to date."},
+  {id:5,brand:"ASICS",model:"Metaspeed Sky Tokyo",purpose:["race"],drop:5,stack:"39.5/34.5mm",wt:"166g (M9)",foam:"FF Leap + FF Turbo+",feel:"Bouncy & plush",plate:"Carbon plate",cushion:"High",support:"Neutral",fit:"Snug; size up if wide",priceUSD:270,gait:["neutral"],foamT:["springy","soft"],dist:["half","full"],exp:["advanced"],widths:["normal"],arch:["medium","high"],best:"Race day marathon/half. DOR: best for stride-lengthening runners. RunRepeat: 21.1N flexibility, designed for midfoot/forefoot strikers."},
+  {id:6,brand:"ASICS",model:"Metaspeed Edge Tokyo",purpose:["race"],drop:5,stack:"39.5/34.5mm",wt:"170g (M9)",foam:"FF Turbo+ + FF Leap",feel:"Responsive & stable",plate:"Carbon plate",cushion:"High",support:"Neutral",fit:"True to size; narrow",priceUSD:270,gait:["neutral"],foamT:["snappy","firm"],dist:["half","full"],exp:["advanced"],widths:["normal"],arch:["medium","high"],best:"Race day — cadence-focused runners & heel-midfoot strikers. DOR: more stable than Sky Tokyo. RunRepeat: FF Turbo+ above plate for stability."},
+  {id:7,brand:"ASICS",model:"Megablast",purpose:["daily","performance"],drop:8,stack:"45/37mm",wt:"230g (M9)",foam:"FF Turbo Squared",feel:"Bouncy & firm",plate:"None (plateless)",cushion:"Maximum",support:"Neutral",fit:"True to size; narrow forefoot",priceUSD:225,gait:["neutral"],foamT:["snappy","springy"],dist:["10k","half","full"],exp:["intermediate","advanced"],widths:["normal"],arch:["medium","high"],best:"Ultra-bouncy plateless super trainer, tempo to easy runs. RunRepeat: most energetic Blast trainer. DOR: lighter than Superblast."},
+  {id:8,brand:"ASICS",model:"Sonicblast",purpose:["performance","race"],drop:8,stack:"46/38mm",wt:"256g (M9)",foam:"FF Turbo Squared + FF Blast Max",feel:"Snappy & firm",plate:"Pebax Astroplate (3/4 length)",cushion:"Maximum",support:"Neutral",fit:"True to size; snug midfoot",priceUSD:180,gait:["neutral"],foamT:["snappy","firm"],dist:["10k","half","full"],exp:["intermediate","advanced"],widths:["normal"],arch:["medium","high"],best:"Speed work, intervals, tempo, accessible race day. RunRepeat: tallest stack in ASICS Blast range. DOR: plated version of Novablast concept."},
+  {id:9,brand:"ASICS",model:"GT-2000 v14",purpose:["daily","stability"],drop:8,stack:"36.5/28.5mm",wt:"269g (M9)",foam:"FF Blast Max + PureGel",feel:"Bouncy & controlled",plate:"None",cushion:"Moderate",support:"Stability",fit:"True to size; normal width",priceUSD:130,gait:["mild-over","moderate-over"],foamT:["snappy","soft"],dist:["5k","10k","half","full"],exp:["beginner","intermediate","advanced"],widths:["normal","wide"],arch:["low","medium"],best:"Stability daily trainer with bounce. DOR: aggressive medial stability with new FF Blast Max. RunRepeat: 132/110 SA shock absorption."},
+  {id:10,brand:"ASICS",model:"GlideRide Max 2",purpose:["daily","recovery"],drop:6,stack:"46/40mm",wt:"261g (M9)",foam:"FF Blast Max + FF Blast+",feel:"Cushioned & rockered",plate:"3/4 EVA plate",cushion:"Maximum",support:"Neutral",fit:"Slightly snug; size up",priceUSD:170,gait:["neutral","heel"],foamT:["soft","firm"],dist:["half","full"],exp:["beginner","intermediate"],widths:["normal"],arch:["medium","low"],best:"Heel strikers, Achilles issues, max cushion with rocker geometry. DOR: far better rocker and more runnable than v1. RunRepeat: best ASICS option for Achilles rehab."},
+  {id:11,brand:"ASICS",model:"Kayano 32",purpose:["daily","stability","recovery"],drop:8,stack:"40/32mm",wt:"310g (M9)",foam:"FF Blast Plus + PureGel",feel:"Soft & plush",plate:"None",cushion:"Maximum",support:"Stability",fit:"True to size; premium fit",priceUSD:170,gait:["mild-over","moderate-over"],foamT:["soft"],dist:["5k","10k","half","full"],exp:["beginner","intermediate","advanced"],widths:["normal","wide"],arch:["low","medium"],best:"Premium stability with plush support for overpronators on long runs. DOR: 4D Guidance System. RunRepeat: much refined vs previous versions."},
+  // ON — specs verified via DOR & RunRepeat
+  {id:12,brand:"ON",model:"Cloud Monster 3",purpose:["daily"],drop:6,stack:"35/27mm",wt:"295g (M9)",foam:"Helion dual density",feel:"Firm & structured",plate:"Nylon Speedboard",cushion:"High",support:"Neutral",fit:"True to size; slightly wider toe box",priceUSD:190,gait:["neutral"],foamT:["firm"],dist:["5k","10k","half","full"],exp:["beginner","intermediate","advanced"],widths:["normal","wide"],arch:["high","medium","low"],best:"Premium daily with iconic CloudTec design; durable. RunRepeat: 58.7% energy return, firm ride, best for durability. DOR: consistent with v1/v2 DNA."},
+  {id:13,brand:"ON",model:"Cloud Monster 3 Hyper",purpose:["daily","performance"],drop:6,stack:"38/30mm",wt:"280g (M9)",foam:"Helion HF (PEBA)",feel:"Bouncy & firm",plate:"Nylon Speedboard",cushion:"High",support:"Neutral",fit:"True to size",priceUSD:250,gait:["neutral"],foamT:["springy","firm"],dist:["10k","half","full"],exp:["intermediate","advanced"],widths:["normal"],arch:["high","medium"],best:"Long runs, tempo, marathon training with PEBA responsiveness. DOR: best execution of Helion HF in a training shoe. RunRepeat: significant upgrade over standard CM3."},
+  {id:14,brand:"ON",model:"Cloud Flyer 5",purpose:["daily","stability"],drop:8,stack:"32/24mm",wt:"275g (M9)",foam:"Helion",feel:"Firm & stable",plate:"None",cushion:"Moderate",support:"Stability",fit:"True to size",priceUSD:170,gait:["mild-over"],foamT:["firm"],dist:["5k","10k","half"],exp:["beginner","intermediate"],widths:["normal"],arch:["low","medium"],best:"Light ON stability trainer with guided support for mild overpronators."},
+  {id:15,brand:"ON",model:"Cloud Runner 3",purpose:["daily"],drop:9,stack:"32/23mm",wt:"258g (M9)",foam:"Helion",feel:"Firm & responsive",plate:"None",cushion:"Moderate",support:"Neutral",fit:"True to size",priceUSD:130,gait:["neutral"],foamT:["firm"],dist:["5k","10k"],exp:["beginner","intermediate"],widths:["normal"],arch:["medium","high"],best:"Entry-level daily trainer; accessible, lightweight, affordable. Great first ON shoe."},
+  {id:16,brand:"ON",model:"Cloudboom Strike",purpose:["race"],drop:5,stack:"38.1/34.9mm",wt:"201g (M9)",foam:"Helion HF (PEBA)",feel:"Bouncy & lively",plate:"Carbon Speedboard",cushion:"High",support:"Neutral",fit:"True to size; slightly roomy vs Echo 3",priceUSD:280,gait:["neutral"],foamT:["springy","snappy"],dist:["5k","10k","half","full"],exp:["advanced"],widths:["normal"],arch:["medium","high"],best:"Race day for forefoot strikers. RunRepeat: 72.1%/73.4% energy return, world-class. DOR: best ON super shoe to date. Not ideal for heel strikers."},
+  {id:17,brand:"ON",model:"Cloudboom Volt",purpose:["race"],drop:4,stack:"41/37mm",wt:"210g (M9)",foam:"Helion HF (firm version)",feel:"Firm & controlled",plate:"Carbon Speedboard",cushion:"High",support:"Neutral",fit:"True to size; wide toe box",priceUSD:200,gait:["neutral"],foamT:["firm","springy"],dist:["half","full"],exp:["intermediate","advanced"],widths:["normal"],arch:["medium","high"],best:"Accessible carbon racer; training companion to Cloudboom Strike. DOR: firmer Helion HF; feels like training partner shoe."},
+  {id:18,brand:"ON",model:"Cloudboom Max",purpose:["race"],drop:10,stack:"40/30mm",wt:"245g (M9)",foam:"Helion HF",feel:"Plush & cushioned",plate:"Carbon Speedboard",cushion:"Maximum",support:"Neutral",fit:"True to size; roomy",priceUSD:230,gait:["neutral","heel"],foamT:["soft"],dist:["full"],exp:["beginner","intermediate"],widths:["normal","wide"],arch:["medium","low"],best:"Marathon 4h+ runners wanting plush super shoe comfort. DOR: comfortable recreational marathon racer."},
+  {id:19,brand:"ON",model:"Cloudsurfer 2",purpose:["daily"],drop:9,stack:"37/28mm",wt:"255g (M9)",foam:"Helion + CloudTec Phase",feel:"Firm & flexible",plate:"None",cushion:"High",support:"Neutral",fit:"Slightly small; size up half",priceUSD:160,gait:["neutral"],foamT:["firm"],dist:["5k","10k","half"],exp:["beginner","intermediate","advanced"],widths:["normal"],arch:["high","medium","low"],best:"Comfortable daily trainer; flexible smooth transitions. DOR: daily workhorse, durable outsole. RunRepeat: 9mm drop, NOT 6mm — favours heel strikers."},
+  {id:20,brand:"ON",model:"Cloudsurfer Max",purpose:["daily","recovery"],drop:6,stack:"37/30mm",wt:"292g (M9)",foam:"Helion + CloudTec Phase",feel:"Firm & structured",plate:"None",cushion:"Maximum",support:"Neutral",fit:"True to size; roomy",priceUSD:180,gait:["neutral","heel"],foamT:["firm"],dist:["half","full"],exp:["beginner","intermediate"],widths:["normal","wide"],arch:["medium","low"],best:"Lifestyle recovery running; max cushion easy miles. DOR: firm for a max stack shoe. RunRepeat: 48.3% energy return — comfort over performance."},
+  {id:21,brand:"ON",model:"Cloudflow 5",purpose:["performance","race"],drop:9,stack:"32/23mm",wt:"220g (M9)",foam:"Helion",feel:"Firm & snappy",plate:"Speedboard",cushion:"Moderate",support:"Neutral",fit:"True to size",priceUSD:160,gait:["neutral"],foamT:["snappy","firm"],dist:["5k","10k","half"],exp:["intermediate","advanced"],widths:["normal"],arch:["high","medium"],best:"Speed sessions and 5K–half marathon racing; nimble and fast."},
+  {id:22,brand:"ON",model:"Cloudsurfer Next",purpose:["daily","performance"],drop:6,stack:"37/31mm",wt:"266g (M9)",foam:"Helion + CloudTec Phase",feel:"Firm & ground-feel",plate:"None",cushion:"Moderate",support:"Neutral",fit:"Slightly snug toe box; size up half",priceUSD:150,gait:["neutral"],foamT:["firm"],dist:["5k","10k","half"],exp:["intermediate","advanced"],widths:["normal"],arch:["high","medium"],best:"Versatile lightweight trainer for midfoot/forefoot strikers. DOR: feels lower than stated drop. RunRepeat: 56% energy return, firm and stable."},
+  // ADIDAS — specs verified DOR & RunRepeat
+  {id:23,brand:"Adidas",model:"Boston 13",purpose:["daily","performance"],drop:6,stack:"36/30mm",wt:"254g (M9)",foam:"Lightstrike Pro + Lightstrike 2.0",feel:"Snappy & firm",plate:"Carbon Energy Rods 2.0",cushion:"Moderate",support:"Neutral",fit:"True to size; snug midfoot",priceUSD:160,gait:["neutral"],foamT:["snappy","firm"],dist:["5k","10k","half","full"],exp:["intermediate","advanced"],widths:["normal"],arch:["high","medium"],best:"Versatile speed trainer, tempo to marathon training. RunRepeat: 126 SA shock absorption. DOR: softest Boston to date, 14% more Lightstrike Pro than v12."},
+  {id:24,brand:"Adidas",model:"Evo SL Woven",purpose:["daily","performance"],drop:6,stack:"38/30mm",wt:"224g (M9)",foam:"Full Lightstrike Pro (TPEE)",feel:"Soft & bouncy",plate:"Partial shank (no rods)",cushion:"High",support:"Neutral",fit:"Slightly roomy",priceUSD:150,gait:["neutral"],foamT:["soft","springy"],dist:["5k","10k","half","full"],exp:["intermediate","advanced"],widths:["normal","wide"],arch:["high","medium"],best:"Best value Lightstrike Pro; daily trainer to accessible racer. RunRepeat: 74.3%/70.3% energy return — highest in daily trainer category."},
+  {id:25,brand:"Adidas",model:"Adios Pro 4",purpose:["race"],drop:6,stack:"39/33mm",wt:"202g (M9)",foam:"Full Lightstrike Pro TPEE (updated)",feel:"Bouncy & responsive",plate:"Carbon Energy Rods 2.0",cushion:"High",support:"Neutral",fit:"Snug; size up half",priceUSD:250,gait:["neutral"],foamT:["springy","snappy"],dist:["5k","10k","half","full"],exp:["advanced"],widths:["normal"],arch:["high","medium"],best:"Highest energy return tested (80.4%) at time of release. RunRepeat: record-setting. DOR: updated TPEE formula, softer and more bouncy than AP3."},
+  {id:26,brand:"Adidas",model:"Takumi Sen 11",purpose:["race"],drop:7,stack:"33/26mm",wt:"184g (M9)",foam:"Full Lightstrike Pro",feel:"Snappy & responsive",plate:"Glass Fiber Energy Rods 2.0",cushion:"Moderate",support:"Neutral",fit:"True to size; narrow",priceUSD:180,gait:["neutral"],foamT:["snappy","firm"],dist:["5k","10k","half"],exp:["advanced"],widths:["normal"],arch:["high","medium"],best:"5K–half marathon racing; fast, light, low stack. DOR: similar to Vaporfly 4 in purpose."},
+  // NIKE — specs verified DOR & RunRepeat
+  {id:27,brand:"Nike",model:"Alphafly 3",purpose:["race"],drop:4,stack:"39/31mm",wt:"185g (M9)",foam:"Full ZoomX + Zoom Air pods",feel:"Soft & explosive",plate:"Carbon plate",cushion:"Maximum",support:"Neutral",fit:"True to size",priceUSD:285,gait:["neutral"],foamT:["soft","springy"],dist:["full"],exp:["advanced"],widths:["normal"],arch:["high","medium"],best:"Marathon race day; max cushion super shoe with Air pods. RunRepeat: record energy return via ZoomX + air pods combo."},
+  {id:28,brand:"Nike",model:"Vaporfly 4",purpose:["race"],drop:7,stack:"34.1/25.5mm",wt:"166g (M9)",foam:"Full ZoomX",feel:"Bouncy & snappy",plate:"Carbon Flyplate",cushion:"High",support:"Neutral",fit:"Improved fit vs v3; true to size",priceUSD:260,gait:["neutral"],foamT:["snappy","springy"],dist:["5k","10k","half","full"],exp:["advanced"],widths:["normal"],arch:["high","medium"],best:"Featherlight super shoe; 5K to marathon for faster runners. DOR: now more suited to shorter distances than Alphafly."},
+  {id:29,brand:"Nike",model:"Vomero Plus 18",purpose:["daily","recovery"],drop:8,stack:"42.3/32.7mm",wt:"320g (M9)",foam:"Full ZoomX (training version)",feel:"Plush & bouncy",plate:"None",cushion:"Maximum",support:"Neutral",fit:"Standard; slightly narrow toe box",priceUSD:175,gait:["neutral","heel"],foamT:["soft","springy"],dist:["half","full"],exp:["beginner","intermediate","advanced"],widths:["normal"],arch:["high","medium","low"],best:"Recovery & easy long runs; ZoomX in a max cushion trainer. RunRepeat: 67.1%/68.8% energy return, near super shoe levels. Heavier build."},
+  {id:30,brand:"Nike",model:"Pegasus 42",purpose:["daily"],drop:10,stack:"35/25mm",wt:"292g (M9)",foam:"ReactX + Air Zoom unit",feel:"Responsive & balanced",plate:"None",cushion:"Moderate",support:"Neutral",fit:"True to size; full-length Air Zoom",priceUSD:110,gait:["neutral","heel"],foamT:["snappy"],dist:["5k","10k","half"],exp:["beginner","intermediate","advanced"],widths:["normal","wide"],arch:["high","medium","low"],best:"All-around daily trainer; affordable, durable, versatile. Best entry-level Nike runner."},
+  {id:31,brand:"Nike",model:"Structure Plus 26",purpose:["daily","stability"],drop:9,stack:"36/26.5mm",wt:"302g (M9)",foam:"Full ReactX",feel:"Firm & stable",plate:"Midfoot support system",cushion:"Moderate",support:"Stability",fit:"True to size",priceUSD:130,gait:["mild-over","moderate-over"],foamT:["firm"],dist:["5k","10k","half"],exp:["beginner","intermediate","advanced"],widths:["normal","wide"],arch:["low","medium"],best:"Nike stability daily trainer with firm guidance. Worn by Cole Hocker for most training."},
+  {id:32,brand:"Nike",model:"Zoom Fly 6",purpose:["performance","race"],drop:8,stack:"35/26mm",wt:"266g (M9)",foam:"ZoomX top + SR-02 carrier",feel:"Snappy & dual density",plate:"Carbon Flyplate",cushion:"Moderate",support:"Neutral",fit:"Slightly narrow",priceUSD:160,gait:["neutral"],foamT:["snappy","firm"],dist:["10k","half","full"],exp:["intermediate","advanced"],widths:["normal"],arch:["high","medium"],best:"Tempo, marathon training, accessible carbon racer. RunRepeat: different ZoomX from Alphafly — more durable but less bouncy."},
+  // NEW BALANCE — specs verified DOR & RunRepeat
+  {id:33,brand:"New Balance",model:"1080v15",purpose:["daily","recovery"],drop:6,stack:"38/28mm",wt:"300g (M9)",foam:"Infinion (supercritical)",feel:"Soft, bouncy & plush",plate:"None",cushion:"Maximum",support:"Neutral",fit:"True to size; slightly long",priceUSD:170,gait:["neutral"],foamT:["soft","springy"],dist:["half","full"],exp:["beginner","intermediate","advanced"],widths:["narrow","normal","wide"],arch:["high","medium","low"],best:"Premium daily trainer; plush supercritical cushioning for all-day comfort. DOR: plushest 1080 in years. RunRepeat: rivals 1080v14 in versatility."},
+  {id:34,brand:"New Balance",model:"880v15",purpose:["daily","recovery"],drop:6,stack:"40/30mm",wt:"278g (M9)",foam:"Fresh Foam X",feel:"Soft & stable",plate:"None",cushion:"Maximum",support:"Neutral",fit:"True to size",priceUSD:140,gait:["neutral","heel"],foamT:["soft"],dist:["half","full"],exp:["beginner","intermediate"],widths:["normal","wide"],arch:["high","medium","low"],best:"Affordable max cushion daily trainer; big update from v14 with much taller stack."},
+  {id:35,brand:"New Balance",model:"Rebel v5",purpose:["daily","performance"],drop:6,stack:"32/26mm",wt:"225g (M9)",foam:"FuelCell (supercritical)",feel:"Rubbery-soft & snappy",plate:"None",cushion:"Moderate",support:"Neutral",fit:"Slightly short; size up half",priceUSD:130,gait:["neutral"],foamT:["snappy","soft"],dist:["5k","10k","half"],exp:["intermediate","advanced"],widths:["normal"],arch:["high","medium"],best:"Light speed trainer; tempo, intervals, 5K–half marathon. RunRepeat: fixes main flaws of v4."},
+  {id:36,brand:"New Balance",model:"SC Elite v5",purpose:["race"],drop:6,stack:"39/31mm",wt:"196g (M9)",foam:"FuelCell PEBA + Energy Arc",feel:"Responsive & firm",plate:"Carbon Energy Arc plate",cushion:"High",support:"Neutral",fit:"True to size; medium width",priceUSD:250,gait:["neutral"],foamT:["snappy","firm"],dist:["5k","10k","half","full"],exp:["advanced"],widths:["normal","wide"],arch:["high","medium"],best:"Stable super shoe; one of few racing shoes available in wide width. Major update from v4."},
+  {id:37,brand:"New Balance",model:"SC Trainer v3",purpose:["performance"],drop:6,stack:"38/30mm",wt:"220g (M9)",foam:"FuelCell PEBA + EVA",feel:"Snappy & responsive",plate:"Carbon-like plate",cushion:"High",support:"Neutral",fit:"True to size",priceUSD:180,gait:["neutral"],foamT:["snappy"],dist:["half","full"],exp:["intermediate","advanced"],widths:["normal"],arch:["high","medium"],best:"Marathon training, key long tempo runs; plated super trainer that handles big mileage."},
+  {id:38,brand:"New Balance",model:"FuelCell Ellipse",purpose:["daily"],drop:6,stack:"36/28mm",wt:"260g (M9)",foam:"Fresh Foam X",feel:"Cushioned & moderate",plate:"None",cushion:"High",support:"Neutral",fit:"True to size",priceUSD:130,gait:["neutral"],foamT:["soft"],dist:["5k","10k"],exp:["beginner","intermediate"],widths:["normal"],arch:["medium","low"],best:"Comfortable lifestyle-forward daily trainer; easy miles with fashion-forward design."},
+  {id:39,brand:"New Balance",model:"More v6",purpose:["daily","recovery"],drop:4,stack:"45/37mm",wt:"291g (M9)",foam:"Fresh Foam X",feel:"Plush & soft",plate:"None",cushion:"Maximum",support:"Neutral",fit:"True to size",priceUSD:155,gait:["neutral","heel"],foamT:["soft"],dist:["half","full"],exp:["beginner","intermediate","advanced"],widths:["normal","wide"],arch:["high","medium","low"],best:"Max cushion recovery; plush easy runs and ultra distance. Low 4mm drop suits forefoot runners."},
+  {id:40,brand:"New Balance",model:"860v15",purpose:["daily","stability"],drop:6,stack:"38/28mm",wt:"283g (M9)",foam:"Fresh Foam X + Stability Plane",feel:"Smooth & supportive",plate:"Stability Plane insert",cushion:"High",support:"Stability",fit:"True to size; multiple widths",priceUSD:140,gait:["mild-over"],foamT:["soft","firm"],dist:["5k","10k","half","full"],exp:["beginner","intermediate","advanced"],widths:["normal","wide"],arch:["low","medium"],best:"Light stability daily trainer; gentle Stability Plane guidance. RunRepeat: smooth rocker, natural-feeling stability."},
+  // HOKA — specs verified DOR & RunRepeat (corrected from lab measurements)
+  {id:41,brand:"HOKA",model:"Mach 7",purpose:["daily","performance"],drop:5,stack:"35.6/26.2mm",wt:"224g (M9)",foam:"Supercritical EVA",feel:"Bouncy & lively",plate:"None",cushion:"Moderate",support:"Neutral",fit:"True to size; narrow — size up if wide",priceUSD:145,gait:["neutral"],foamT:["snappy","springy"],dist:["5k","10k","half","full"],exp:["intermediate","advanced"],widths:["normal"],arch:["high","medium"],best:"Versatile daily trainer; easy runs to tempo. RunRepeat: 7.9oz, lighter than v6. Improved outsole grip (0.73 vs 0.49 in v6)."},
+  {id:42,brand:"HOKA",model:"Clifton 10",purpose:["daily","recovery"],drop:8,stack:"44.4/32.0mm",wt:"275g (M9)",foam:"CMEVA",feel:"Smooth & cushioned",plate:"None",cushion:"Maximum",support:"Neutral",fit:"True to size; wider toe box",priceUSD:150,gait:["neutral","heel"],foamT:["soft"],dist:["half","full"],exp:["beginner","intermediate","advanced"],widths:["normal","wide"],arch:["high","medium","low"],best:"Smooth easy daily running. RunRepeat: 147 SA shock absorption, huge jump from v9. Stack higher than Bondi 9. Not bouncy (52.3% energy return)."},
+  {id:43,brand:"HOKA",model:"Bondi 9",purpose:["daily","recovery"],drop:5,stack:"41.3/32.2mm",wt:"286g (M9)",foam:"Supercritical EVA",feel:"Plush & smooth",plate:"None",cushion:"Maximum",support:"Neutral",fit:"True to size; roomy but narrow toe box",priceUSD:170,gait:["neutral","heel"],foamT:["soft"],dist:["half","full"],exp:["beginner","intermediate","advanced"],widths:["normal","wide"],arch:["high","medium","low"],best:"Max cushion recovery, walking, all-day comfort. RunRepeat: 146/133 SA shock absorption. Energy return improved to 60.2% (vs 51% in v8)."},
+  {id:44,brand:"HOKA",model:"Rocket X3",purpose:["race"],drop:7,stack:"40/33mm",wt:"210g (M9)",foam:"Dual PEBA (winged carbon fork plate)",feel:"Bouncy & controlled",plate:"Carbon fork plate with winglets",cushion:"High",support:"Neutral",fit:"Slightly narrow; true to size",priceUSD:250,gait:["neutral","heel"],foamT:["springy","snappy"],dist:["half","full"],exp:["intermediate","advanced"],widths:["normal"],arch:["high","medium"],best:"Stable PEBA super shoe; beginner-friendly carbon racer. DOR: one of the few stable neutral super shoes. RunRepeat: 73.9%/78% energy return, durable."},
+  {id:45,brand:"HOKA",model:"Cielo X1 3.0",purpose:["race"],drop:7,stack:"39/31mm",wt:"200g (M9)",foam:"Dual PEBA",feel:"Explosive & soft",plate:"Carbon plate",cushion:"High",support:"Neutral",fit:"Snug; size up half",priceUSD:265,gait:["neutral"],foamT:["springy","soft"],dist:["5k","10k","half","full"],exp:["advanced"],widths:["normal"],arch:["high","medium"],best:"Elite marathon racer; midfoot/forefoot strikers. More stable than v2 (medial cutout removed). Aggressive geometry."},
+  {id:46,brand:"HOKA",model:"Arahi 8",purpose:["daily","stability"],drop:8,stack:"39.4/30mm",wt:"268g (M9)",foam:"CMEVA",feel:"Smooth & guided",plate:"H-Frame stability",cushion:"High",support:"Stability",fit:"True to size; wider fit than v7",priceUSD:140,gait:["mild-over"],foamT:["firm","soft"],dist:["5k","10k","half","full"],exp:["beginner","intermediate","advanced"],widths:["normal","wide"],arch:["low","medium"],best:"Stability daily trainer with H-Frame system (upgraded from J-Frame). RunRepeat: softer foam, wider fit, higher drop vs v7. Taller stack."},
+  {id:47,brand:"HOKA",model:"Mach X3",purpose:["performance","race"],drop:5,stack:"42.9/33.4mm",wt:"289g (M9)",foam:"PEBA top + EVA base + Pebax plate",feel:"Bouncy & snappy forefoot",plate:"Pebax plate",cushion:"High",support:"Neutral",fit:"Ultra-snug; narrow — size up",priceUSD:210,gait:["neutral"],foamT:["springy","snappy"],dist:["5k","10k","half","full"],exp:["intermediate","advanced"],widths:["normal"],arch:["high","medium"],best:"HOKA super trainer, tempo to race day. DOR: 289g (heavier than v2). RunRepeat: forefoot-focused bouncy ride; heel 58.9% vs forefoot 69.3% energy return."},
+  // PUMA — specs verified DOR & RunRepeat
+  {id:48,brand:"Puma",model:"Deviate Nitro Elite 4",purpose:["race"],drop:8,stack:"38/30mm",wt:"170g (M9)",foam:"Nitrofoam Elite (ATPU)",feel:"Bouncy & light",plate:"Carbon PWRPLATE",cushion:"High",support:"Neutral",fit:"True to size; narrow midfoot",priceUSD:250,gait:["neutral","heel"],foamT:["springy","soft"],dist:["5k","10k","half","full"],exp:["intermediate","advanced"],widths:["normal"],arch:["high","medium"],best:"Best Puma marathon racer. DOR: 12% lighter than v3, finally A-tier. DOR stack: 38/30mm (not 40/32 as some sources state). 170g per DOR."},
+  {id:49,brand:"Puma",model:"Deviate Nitro 4",purpose:["performance","daily"],drop:8,stack:"38/30mm",wt:"215g (M9)",foam:"Nitrofoam + Nitrofoam Elite",feel:"Snappy & stable",plate:"Carbon PWRPLATE",cushion:"High",support:"Neutral",fit:"True to size; snug midfoot, wider forefoot",priceUSD:160,gait:["neutral"],foamT:["snappy","firm"],dist:["5k","10k","half","full"],exp:["intermediate","advanced"],widths:["normal"],arch:["high","medium"],best:"Versatile speed trainer; tempo to half marathon. DOR: carbon composite plate, stiff forefoot. Similar to Nike Zoom Fly 6 / Endorphin Speed 5."},
+  {id:50,brand:"Puma",model:"Velocity Nitro 4",purpose:["daily"],drop:8,stack:"33.7/24.0mm",wt:"224g (M9)",foam:"Nitrofoam (single slab)",feel:"Firm & responsive",plate:"None",cushion:"Moderate",support:"Neutral",fit:"True to size; snug rear, wider forefoot",priceUSD:110,gait:["neutral"],foamT:["firm","snappy"],dist:["5k","10k","half"],exp:["beginner","intermediate","advanced"],widths:["normal"],arch:["high","medium","low"],best:"Affordable, responsive daily trainer. RunRepeat: 224g, 136/100 SA, excellent PumaGrip traction (0.65). Rivals Pegasus 42."},
+  {id:51,brand:"Puma",model:"Fast-R Nitro Elite 3",purpose:["race"],drop:8,stack:"38/28mm",wt:"170g (M9)",foam:"Nitrofoam Elite (ATPU)",feel:"Aggressive & springy",plate:"Carbon PWRPLATE",cushion:"High",support:"Neutral",fit:"Snug; best for forefoot strikers",priceUSD:300,gait:["neutral"],foamT:["springy","snappy"],dist:["5k","10k","half"],exp:["advanced"],widths:["normal"],arch:["high","medium"],best:"5K–half marathon elite racing; aggressive rocker for forefoot runners. DOR: Andrea's top 5K shoe 2025. RunRepeat: 0.71 wet traction score, outstanding grip."},
+  {id:52,brand:"Puma",model:"MagMax Nitro 2",purpose:["daily","recovery"],drop:4,stack:"45.5/35.0mm",wt:"265g (M9)",foam:"Nitrofoam (single slab)",feel:"Bouncy & plush",plate:"None",cushion:"Maximum",support:"Neutral",fit:"True to size; roomy",priceUSD:165,gait:["neutral","heel"],foamT:["soft","springy"],dist:["half","full"],exp:["beginner","intermediate","advanced"],widths:["normal"],arch:["high","medium","low"],best:"Max cushion recovery and easy long runs. RunRepeat: 141/137 SA shock absorption, 45.5/35mm — excellent cushion. 5/5 torsional rigidity."},
+  // SAUCONY — specs verified DOR & RunRepeat
+  {id:53,brand:"Saucony",model:"Azura",purpose:["daily","performance"],drop:8,stack:"40.7/32mm",wt:"241g (M9)",foam:"Full PWRRUN PB (PEBA beads)",feel:"Bouncy & soft",plate:"None (SpeedRoll geometry)",cushion:"Maximum",support:"Neutral",fit:"True to size",priceUSD:180,gait:["neutral"],foamT:["soft","springy"],dist:["5k","10k","half","full"],exp:["intermediate","advanced"],widths:["normal"],arch:["high","medium"],best:"Plateless super trainer; daily to tempo. RunRepeat: 70.6%/74.7% energy return, rivals EVO SL. 137/122 SA shock absorption."},
+  {id:54,brand:"Saucony",model:"Endorphin Pro 5",purpose:["race"],drop:8,stack:"36.5/27.8mm",wt:"215g (M9)",foam:"PWRRUN HG + PWRRUN PB",feel:"Bouncy & stable",plate:"Carbon fiber plate (slotted SpeedRoll)",cushion:"High",support:"Neutral",fit:"True to size; roomy",priceUSD:225,gait:["neutral","heel"],foamT:["springy","snappy"],dist:["half","full"],exp:["intermediate","advanced"],widths:["normal","wide"],arch:["high","medium"],best:"Marathon race day; stable carbon super shoe. RunRepeat: 72.8%/75.8% energy return, 215g. DOR: wide fit, best for heel strikers. Durable outsole."},
+  {id:55,brand:"Saucony",model:"Endorphin Speed 5",purpose:["performance","race"],drop:8,stack:"37.4/26.8mm",wt:"241g (M9)",foam:"PWRRUN PB (+ PWRRUN HG in some layers)",feel:"Snappy & responsive",plate:"Nylon PWRPLATE",cushion:"High",support:"Neutral",fit:"True to size; wider than v4",priceUSD:180,gait:["neutral"],foamT:["snappy"],dist:["5k","10k","half","full"],exp:["intermediate","advanced"],widths:["normal"],arch:["high","medium"],best:"Tempo, intervals, 5K–marathon training. RunRepeat: 73.2%/78.2% energy return — world-class for nylon plate shoe. DOR: heavier than ideal but most versatile Saucony."},
+  {id:56,brand:"Saucony",model:"Endorphin Elite 3",purpose:["race"],drop:8,stack:"39.5/31.5mm",wt:"199g (M9)",foam:"IncrediRun (TPEE) + PWRRUN HG",feel:"Ultra-bouncy & soft",plate:"Carbon plate (slotted)",cushion:"High",support:"Neutral",fit:"Snug; true to size",priceUSD:275,gait:["neutral"],foamT:["springy","soft"],dist:["half","full"],exp:["advanced"],widths:["normal"],arch:["high","medium"],best:"Elite marathon racing; combines best of v1 (firm/responsive) and v2 (soft/bouncy). DOR: best of both worlds, redesigned upper."},
+  {id:57,brand:"Saucony",model:"Ride 19",purpose:["daily"],drop:8,stack:"38.7/30.2mm",wt:"268g (M9)",foam:"PWRRUN+",feel:"Bouncy & moderate",plate:"None",cushion:"Moderate",support:"Neutral",fit:"True to size",priceUSD:130,gait:["neutral"],foamT:["snappy","soft"],dist:["5k","10k","half","full"],exp:["beginner","intermediate","advanced"],widths:["normal","wide"],arch:["high","medium","low"],best:"Reliable versatile daily trainer; all paces, all runners. RunRepeat: 66.7%/70.7% energy return. XT-900 rubber for excellent durability."},
+  {id:58,brand:"Saucony",model:"Hurricane 25",purpose:["daily","stability"],drop:8,stack:"35/27mm",wt:"298g (M9)",foam:"PWRRUN+ + PWRRUN",feel:"Supportive & cushioned",plate:"None",cushion:"High",support:"Max Stability",fit:"True to size; wide fit",priceUSD:140,gait:["moderate-over","high-over"],foamT:["soft","firm"],dist:["5k","10k","half","full"],exp:["beginner","intermediate","advanced"],widths:["normal","wide"],arch:["low"],best:"Maximum stability daily shoe; best for strong overpronators needing significant medial support."},
+  {id:59,brand:"Saucony",model:"Triumph 23",purpose:["daily","recovery"],drop:8,stack:"42.3/32.3mm",wt:"268g (M9)",foam:"PWRRUN PB (supercritical PEBA/EVA)",feel:"Soft & plush",plate:"None",cushion:"Maximum",support:"Neutral",fit:"True to size",priceUSD:160,gait:["neutral"],foamT:["soft"],dist:["half","full"],exp:["beginner","intermediate","advanced"],widths:["normal","wide"],arch:["high","medium","low"],best:"Plush recovery and long runs. RunRepeat: 149/136 SA shock absorption, 42.3/32.3mm stack. ~1oz lighter than Triumph 22."},
+  {id:60,brand:"Saucony",model:"Guide 18",purpose:["daily","stability"],drop:8,stack:"37/27mm",wt:"285g (M9)",foam:"PWRRUN Enhanced",feel:"Smooth & guided",plate:"Centre Path Technology",cushion:"High",support:"Stability",fit:"True to size; multiple widths",priceUSD:130,gait:["mild-over"],foamT:["soft","firm"],dist:["5k","10k","half","full"],exp:["beginner","intermediate","advanced"],widths:["normal","wide"],arch:["low","medium"],best:"Light stability trainer; comfortable guidance without heavy posting. DOR: standard go-to for mild overpronation."}
+];
+
+const BC={ASICS:"#0057A8",ON:"#00AF5B",Adidas:"#1a1a1a",Nike:"#E5191D","New Balance":"#CF102D",HOKA:"#E65C00",Puma:"#AA0000",Saucony:"#7B2D8B"};
+
+const STEPS=[
+  {id:"gender",label:"Athlete gender",multi:false,opts:[{v:"male",l:"Male"},{v:"female",l:"Female"},{v:"other",l:"Other / prefer not to say"}]},
+  {id:"experience",label:"Experience level",multi:false,opts:[{v:"beginner",l:"Beginner — under 1 year"},{v:"intermediate",l:"Intermediate — 1 to 4 years"},{v:"advanced",l:"Advanced — 4+ years"}]},
+  {id:"purpose",label:"Primary purpose",multi:true,opts:[{v:"versatile",l:"Versatile — all-round workhorse (daily + speed + recovery)"},{v:"daily",l:"Daily training"},{v:"performance",l:"Performance & speed"},{v:"race",l:"Race day"},{v:"recovery",l:"Recovery runs"},{v:"new",l:"New to running — all-round shoe"}]},
+  {id:"distance",label:"Target race distance",multi:true,opts:[{v:"5k",l:"5K"},{v:"10k",l:"10K"},{v:"half",l:"Half marathon"},{v:"full",l:"Full marathon"}]},
+  {id:"gait",label:"Gait / pronation",multi:false,opts:[{v:"neutral",l:"Neutral"},{v:"mild-over",l:"Mild overpronation"},{v:"moderate-over",l:"Moderate overpronation"},{v:"high-over",l:"High overpronation"},{v:"supination",l:"Supination / underpronation"},{v:"unknown",l:"Not sure"}]},
+  {id:"footstrike",label:"Foot strike pattern",multi:false,opts:[{v:"heel",l:"Heel striker"},{v:"mid",l:"Midfoot striker"},{v:"fore",l:"Forefoot striker"},{v:"unknown",l:"Not sure"}]},
+  {id:"arch",label:"Arch type",multi:false,opts:[{v:"high",l:"High arch"},{v:"medium",l:"Medium / neutral arch"},{v:"low",l:"Low arch / flat foot"},{v:"unknown",l:"Not sure"}]},
+  {id:"width",label:"Foot width",multi:false,opts:[{v:"narrow",l:"Narrow"},{v:"normal",l:"Normal / standard"},{v:"wide",l:"Wide"}]},
+  {id:"cushion",label:"Cushion preference",multi:true,opts:[{v:"max",l:"Maximum — plush & protective"},{v:"medium",l:"Medium — balanced feel"},{v:"minimal",l:"Minimal — ground connection"}]},
+  {id:"foam",label:"Foam feel preference",multi:true,opts:[{v:"soft",l:"Soft — plush, cushioned, squishy"},{v:"snappy",l:"Snappy / responsive — bouncy, springy, energetic"},{v:"firm",l:"Firm — stable, controlled, ground feel"}]},
+  {id:"brand",label:"Brand preference",multi:true,max:3,opts:[{v:"ASICS",l:"ASICS"},{v:"ON",l:"ON Running"},{v:"Adidas",l:"Adidas"},{v:"Nike",l:"Nike"},{v:"New Balance",l:"New Balance"},{v:"HOKA",l:"HOKA"},{v:"Puma",l:"Puma"},{v:"Saucony",l:"Saucony"},{v:"none",l:"No preference — show me the best match"}]},
+  {id:"weekly",label:"Weekly mileage (km)",slider:true,min:5,max:150,step:5,def:40},
+  {id:"budget",label:"Budget",slider:true,min:100,max:430,step:10,def:250},
+];
+
+let state={step:0,profile:{gender:"",experience:"",purpose:[],distance:[],gait:"",footstrike:"",arch:"",width:"",cushion:[],foam:[],brand:[],weekly:40,budget:250},results:null,expanded:null};
+
+function scoreShoe(shoe,p){
+  let s=0;
+  if(shoe.exp.includes(p.experience))s+=15;
+  const purposes=p.purpose.length?p.purpose:["daily"];
+  if(purposes.includes("versatile")){
+    if(shoe.purpose.some(x=>["daily","performance","recovery"].includes(x)))s+=20;
+  }
+  if(purposes.includes("race")&&shoe.purpose.includes("race"))s+=20;
+  if(purposes.includes("daily")&&shoe.purpose.includes("daily"))s+=15;
+  if(purposes.includes("recovery")&&shoe.purpose.includes("recovery"))s+=15;
+  if(purposes.includes("performance")&&shoe.purpose.some(x=>["performance","race"].includes(x)))s+=12;
+  if(purposes.includes("new")&&shoe.purpose.includes("daily"))s+=20;
+  const dists=p.distance.length?p.distance:["5k"];
+  if(dists.some(d=>shoe.dist.includes(d)))s+=15;
+  if(p.gait==="neutral"&&shoe.gait.includes("neutral"))s+=12;
+  else if(p.gait==="mild-over"&&(shoe.support==="Stability"||shoe.gait.includes("mild-over")))s+=12;
+  else if(p.gait==="moderate-over"&&shoe.support==="Stability")s+=15;
+  else if(p.gait==="high-over"&&shoe.support==="Max Stability")s+=18;
+  else if(p.gait==="supination"&&shoe.gait.includes("neutral"))s+=8;
+  else if(p.gait==="unknown")s+=6;
+  if(shoe.widths.includes(p.width))s+=8;
+  const cushions=p.cushion.length?p.cushion:["medium"];
+  if(cushions.includes("max")&&shoe.cushion==="Maximum")s+=12;
+  if(cushions.includes("medium")&&["High","Moderate"].includes(shoe.cushion))s+=10;
+  if(cushions.includes("minimal")&&shoe.cushion==="Moderate")s+=8;
+  const foams=p.foam.length?p.foam:["snappy"];
+  if(foams.includes("snappy")&&(shoe.foamT.includes("snappy")||shoe.foamT.includes("springy")))s+=8;
+  if(foams.includes("soft")&&shoe.foamT.includes("soft"))s+=8;
+  if(foams.includes("firm")&&shoe.foamT.includes("firm"))s+=8;
+  const brands=p.brand||[];
+  if(brands.length>0&&!brands.includes("none")){
+    if(brands.includes(shoe.brand))s+=20;
+    else s-=30;
+  }
+  const budgetUSD=Math.round(p.budget/CAD);
+  if(shoe.priceUSD<=budgetUSD)s+=10;
+  else if(shoe.priceUSD<=budgetUSD*1.1)s+=5;
+  if(p.weekly>=60&&shoe.cushion==="Maximum")s+=4;
+  if(p.weekly<30&&shoe.cushion==="Moderate")s+=3;
+  if(p.arch!=="unknown"&&shoe.arch.includes(p.arch))s+=5;
+  else if(p.arch==="unknown")s+=3;
+  if(p.footstrike==="heel"&&shoe.gait.includes("heel"))s+=4;
+  if(p.footstrike==="fore"&&shoe.support==="Neutral"&&shoe.drop<=6)s+=4;
+  if(p.footstrike==="mid"&&shoe.drop<=7&&shoe.support==="Neutral")s+=3;
+  return s;
+}
+
+function pct(n){return Math.min(97,Math.round(n/1.4));}
+
+function isMulti(stepId){const st=STEPS.find(s=>s.id===stepId);return st&&st.multi;}
+
+function toggleVal(key,val){
+  if(isMulti(key)){
+    const step=STEPS.find(s=>s.id===key);
+    const max=step&&step.max?step.max:99;
+    let arr=[...(state.profile[key]||[])];
+    const i=arr.indexOf(val);
+    if(i>=0){
+      arr.splice(i,1);
+    }else{
+      if(key==="brand"&&val==="none"){arr=["none"];}
+      else if(key==="brand"&&arr.includes("none")){arr=arr.filter(x=>x!=="none");if(arr.length<max)arr.push(val);}
+      else if(arr.length<max){arr.push(val);}
+    }
+    state.profile[key]=arr;
+  }else{
+    state.profile[key]=val;
+  }
+  render();
+  if(!isMulti(key))setTimeout(()=>{advance();},180);
+}
+
+function isSelected(key,val){
+  if(isMulti(key))return(state.profile[key]||[]).includes(val);
+  return state.profile[key]===val;
+}
+
+function hasSelection(key){
+  if(isMulti(key))return(state.profile[key]||[]).length>0;
+  return!!state.profile[key];
+}
+
+function advance(){
+  if(state.step<STEPS.length-1){state.step++;render();}
+}
+
+function getResults(){
+  const scored=DB.map(s=>({...s,_s:scoreShoe(s,state.profile)})).sort((a,b)=>b._s-a._s).slice(0,5);
+  state.results=scored;render();
+}
+
+function restart(){
+  state={step:0,profile:{gender:"",experience:"",purpose:[],distance:[],gait:"",footstrike:"",arch:"",width:"",cushion:[],foam:[],brand:[],weekly:40,budget:250},results:null,expanded:null};
+  render();
+}
+
+function render(){
+  const app=document.getElementById("app");
+  if(!app)return;
+
+  if(state.results){
+    let html=`<div class="results-header"><div class="header-label">Your top matches</div><div class="header-title">Recommended shoes</div></div><div class="results-body">`;
+    state.results.forEach((shoe,i)=>{
+      const bc=BC[shoe.brand]||"#333";
+      const isTop=i===0;
+      const isExp=state.expanded===shoe.id;
+      const cadPrice=Math.round(shoe.priceUSD*CAD);
+      html+=`<div class="card${isTop?" top":""}">`;
+      if(isTop)html+=`<div class="card-top-badge">TOP PICK</div>`;
+      html+=`<div class="card-body">
+        <div class="card-row1">
+          <div><div class="brand-name" style="color:${bc}">${shoe.brand}</div><div class="shoe-name">${shoe.model}</div></div>
+          <div class="price-block"><div class="price">$${shoe.priceUSD} USD</div><div class="match">~$${cadPrice} CAD &nbsp;|&nbsp; ${pct(shoe._s)}% match</div></div>
+        </div>
+        <div class="best-for">${shoe.best}</div>
+        <div class="pills">
+          <span class="pill">${shoe.cushion}</span>
+          <span class="pill">${shoe.feel}</span>
+          <span class="pill">Drop ${shoe.drop}mm</span>
+          <span class="pill">${shoe.support}</span>
+          <span class="pill">${shoe.plate!=="None"&&shoe.plate!=="None (plateless)"&&shoe.plate!=="None (SpeedRoll geometry)"?"Plated":"No plate"}</span>
+        </div>
+        <button class="expand-btn" onclick="toggleExpand(${shoe.id})">${isExp?"▲ Less detail":"▼ Full specs"}</button>`;
+      if(isExp){
+        html+=`<div class="specs">`;
+        [["Foam",shoe.foam],["Feel",shoe.feel],["Plate",shoe.plate],["Stack",shoe.stack],["Weight",shoe.wt],["Fit",shoe.fit],["Gait",shoe.gait.join(", ")]].forEach(([k,v])=>{
+          html+=`<div class="spec-row"><span class="spec-key">${k}</span><span class="spec-val">${v}</span></div>`;
+        });
+        html+=`</div>`;
+      }
+      html+=`</div></div>`;
+    });
+    html+=`<button class="restart-btn" onclick="restart()">Start over</button>
+    <div class="disclaimer">Specs sourced from Doctors of Running & RunRepeat lab testing, 2025–2026. Prices in USD; CAD shown at ~1.37 rate (approximate).</div>
+    </div>`;
+    app.innerHTML=html;
+    return;
+  }
+
+  const s=STEPS[state.step];
+  const progress=Math.round((state.step/(STEPS.length-1))*100);
+  const canAdvance=hasSelection(s.id)||s.slider;
+
+  let html=`<div class="header">
+    <div class="header-label">Running shoe finder</div>
+    <div class="header-title">Find your perfect shoe</div>
+    <div class="progress-track"><div class="progress-fill" style="width:${progress}%"></div></div>
+    <div class="progress-text">Step ${state.step+1} of ${STEPS.length}</div>
+  </div><div class="body">
+    <div class="step-label">${s.label}</div>`;
+
+  if(s.slider){
+    const val=state.profile[s.id];
+    const isCAD=s.id==="budget";
+    const displayVal=isCAD?`$${val} CAD (~$${Math.round(val/CAD)} USD)`:val+" km";
+    html+=`<div class="step-hint">${isCAD?"What is your maximum budget per shoe?":"How many km do you run per week on average?"}</div>
+    <div style="height:8px"></div>
+    <div class="slider-row"><span class="slider-label">${isCAD?"Max budget":"Weekly km"}</span><span class="slider-val">${displayVal}</span></div>
+    <input type="range" min="${s.min}" max="${s.max}" step="${s.step}" value="${val}" oninput="sliderChange('${s.id}',this.value)">
+    <div class="slider-ticks"><span>${isCAD?"$":""} ${s.min}</span><span>${isCAD?"$":""} ${Math.round((s.min+s.max)/2)}</span><span>${isCAD?"$":""} ${s.max}</span></div>`;
+    if(state.step===STEPS.length-1){
+      html+=`<button class="btn-primary" onclick="getResults()">Find my shoes</button>`;
+    }else{
+      html+=`<button class="btn-primary" onclick="advance()">Continue</button>`;
+    }
+  }else{
+    if(s.multi){
+      const selectedCount=(state.profile[s.id]||[]).length;
+      const maxMsg=s.max?` (max ${s.max})`:` `;
+      const atMax=s.max&&selectedCount>=s.max;
+      html+=`<div class="step-hint">Choose all that apply${maxMsg}.</div><div class="multiselect-hint">${atMax?`Maximum of ${s.max} selected.`:"Select one or more, then tap Continue."}</div>`;
+    }else{
+      html+=`<div class="step-hint">Choose the option that best describes you.</div><div style="height:8px"></div>`;
+    }
+    html+=`<div class="opts">`;
+    s.opts.forEach(o=>{
+      const sel=isSelected(s.id,o.v);
+      const atMax=s.max&&(state.profile[s.id]||[]).length>=s.max&&!sel;
+      html+=`<button class="opt${sel?" sel":""}${atMax?" disabled":""}" onclick="${atMax?"":"toggleVal('"+s.id+"','"+o.v+"')"}" style="${atMax?"opacity:0.35;cursor:not-allowed;":""}">`;
+      if(s.multi)html+=`<div class="check">${sel?"✓":""}</div>`;
+      html+=`${o.l}</button>`;
+    });
+    html+=`</div>`;
+    if(s.multi&&canAdvance){
+      html+=`<button class="btn-primary" onclick="advance()">Continue →</button>`;
+    }
+  }
+
+  if(state.step>0){
+    html+=`<button class="btn-back" onclick="goBack()">← Back</button>`;
+  }
+  html+=`</div>`;
+  app.innerHTML=html;
+}
+
+window.toggleExpand=id=>{state.expanded=state.expanded===id?null:id;render();};
+window.sliderChange=(k,v)=>{state.profile[k]=parseInt(v);render();};
+window.advance=advance;
+window.goBack=()=>{state.step=Math.max(0,state.step-1);render();};
+window.toggleVal=toggleVal;
+window.getResults=getResults;
+window.restart=restart;
+
+render();
+</script>
+</body>
+</html>
